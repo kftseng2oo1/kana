@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="五十音道場">
+<meta name="theme-color" content="#7a1a1a">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>五十音道場</title>
+<style>
+:root{
+  --ink:#1a0a00;--paper:#fdf6e3;--red:#c0392b;--red2:#8b0000;
+  --gold:#b8860b;--gold2:#f5d06a;--muted:#8b7355;--border:#d4c4a0;
+  --hira:#8b0000;--kata:#1a3a6b;--ok:#2d6a2d;--wrong:#c0392b;
+  --bg-grid:repeating-linear-gradient(0deg,transparent,transparent 31px,rgba(180,160,120,.15) 31px,rgba(180,160,120,.15) 32px),
+            repeating-linear-gradient(90deg,transparent,transparent 31px,rgba(180,160,120,.08) 31px,rgba(180,160,120,.08) 32px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{
+  background:var(--paper);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;
+  display:flex;flex-direction:column;
+}
+
+/* ── HEADER ── */
+#header{
+  background:var(--red2);
+  padding:env(safe-area-inset-top,0) 0 0;
+  text-align:center;flex-shrink:0;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);
+}
+#header-inner{padding:12px 16px 10px;}
+.site-title{font-size:22px;font-weight:800;color:var(--gold2);letter-spacing:6px;}
+.site-sub{font-size:10px;color:rgba(245,208,106,.65);letter-spacing:2px;margin-top:2px;}
+
+/* ── STATS BAR ── */
+#stats{
+  display:flex;background:rgba(26,5,5,.85);
+  border-bottom:1px solid rgba(245,208,106,.2);flex-shrink:0;
+}
+.sc{flex:1;padding:7px 4px;text-align:center;border-right:1px solid rgba(245,208,106,.15);font-size:9px;color:rgba(245,208,106,.6);}
+.sc:last-child{border-right:none;}
+.sc strong{display:block;font-size:15px;color:var(--gold2);font-weight:700;}
+
+/* ── NAV ── */
+#nav{
+  display:flex;background:white;
+  border-bottom:2px solid var(--border);flex-shrink:0;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+.nb{
+  flex:1;padding:11px 2px;border:none;background:transparent;cursor:pointer;
+  font-size:11px;color:var(--muted);border-bottom:3px solid transparent;
+  margin-bottom:-2px;font-family:inherit;transition:color .2s;
+}
+.nb.active{color:var(--red);border-bottom-color:var(--red);font-weight:700;}
+
+/* ── SCROLL AREA ── */
+#content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--paper);background-image:var(--bg-grid);}
+.tab{display:none;padding:14px 12px 40px;}
+.tab.show{display:block;}
+
+/* ── MAP ── */
+.map-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.mc{
+  background:white;border:2px solid var(--border);border-radius:10px;
+  padding:10px 4px 8px;text-align:center;cursor:pointer;transition:all .2s;
+}
+.mc:active{transform:scale(.96);}
+.mc.done{background:#f0f7f0;border-color:var(--ok);}
+.mc.locked{opacity:.45;cursor:default;}
+.mc-kana{font-size:24px;color:var(--hira);line-height:1;}
+.mc-name{font-size:9px;color:var(--muted);margin-top:3px;}
+.mc-prog{height:3px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;}
+.mc-progf{height:100%;background:var(--ok);border-radius:2px;transition:width .4s;}
+
+/* ── CHART ── */
+.frow{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.fb{
+  padding:6px 12px;border:2px solid var(--border);background:white;
+  border-radius:20px;cursor:pointer;font-size:11px;color:var(--muted);
+  font-family:inherit;transition:all .2s;
+}
+.fb.active{border-color:var(--red);background:var(--red);color:white;}
+.rgroup{margin-bottom:9px;}
+.rlabel{font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:4px;}
+.krow{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
+.kc{
+  background:white;border:2px solid var(--border);border-radius:6px;
+  padding:6px 2px 5px;text-align:center;cursor:pointer;min-height:58px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;transition:all .18s;
+}
+.kc:active{transform:scale(.94);}
+.kc.learned{background:#f0f7f0;border-color:var(--ok);}
+.kc.learned::after{content:'✓';position:absolute;top:2px;right:4px;font-size:8px;color:var(--ok);}
+.kc.due{border-color:var(--gold)!important;background:#fffdf0;}
+.kc.empty{background:transparent;border-color:transparent;pointer-events:none;}
+.kchar{font-size:22px;line-height:1;display:block;}
+.kchar.h{color:var(--hira);}  .kchar.k{color:var(--kata);}
+.kroma{font-size:9px;color:var(--muted);margin-top:2px;}
+
+/* ── MODAL ── */
+#overlay{display:none;position:fixed;inset:0;background:rgba(26,10,0,.7);z-index:300;align-items:flex-end;justify-content:center;}
+#overlay.show{display:flex;}
+#modal-box{
+  background:var(--paper);border-top:3px double var(--border);
+  border-radius:20px 20px 0 0;padding:20px 18px calc(env(safe-area-inset-bottom,0px)+20px);
+  width:100%;max-width:480px;position:relative;
+  animation:slideUp .25s ease-out;
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:none}}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted);}
+.modal-big{font-size:64px;line-height:1;margin-bottom:4px;}
+.modal-big.h{color:var(--hira);} .modal-big.k{color:var(--kata);}
+.modal-roma{font-size:16px;letter-spacing:4px;color:var(--muted);margin-bottom:8px;}
+.modal-orig{font-size:11px;color:var(--muted);margin-bottom:9px;padding:5px 10px;background:rgba(139,0,0,.07);border-radius:5px;}
+.modal-orig strong{color:var(--ink);font-size:14px;}
+.modal-pair{display:flex;gap:14px;justify-content:center;padding:9px 12px;background:white;border:1px solid var(--border);border-radius:6px;margin-bottom:10px;}
+.pi{text-align:center;}
+.pilabel{font-size:9px;color:var(--muted);margin-bottom:2px;}
+.pichar.h{font-size:30px;color:var(--hira);}
+.pichar.k{font-size:30px;color:var(--kata);}
+.wlabel{font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:5px;}
+.wpill{display:inline-flex;align-items:center;gap:4px;background:white;border:1px solid var(--border);border-radius:20px;padding:3px 9px;margin:2px;font-size:11px;}
+.wjp{font-size:13px;color:var(--hira);}
+.wmean{color:var(--muted);}
+.mbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px;}
+.btn-speak{background:var(--red);color:white;border:none;border-radius:6px;padding:10px 20px;cursor:pointer;font-size:13px;font-family:inherit;}
+.btn-learn{background:transparent;color:var(--ok);border:2px solid var(--ok);border-radius:6px;padding:9px 16px;cursor:pointer;font-size:12px;font-family:inherit;}
+.btn-learn.done{background:var(--ok);color:white;}
+
+/* ── FLASHCARD ── */
+.fcc{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.fcb{padding:7px 12px;border:2px solid var(--border);background:white;border-radius:20px;cursor:pointer;font-size:11px;color:var(--muted);font-family:inherit;transition:all .2s;}
+.fcb.active{border-color:var(--gold);background:var(--gold);color:white;}
+.fc-info{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px;}
+.fc-pbar{height:4px;background:var(--border);border-radius:2px;margin-bottom:12px;overflow:hidden;}
+.fc-pfill{height:100%;background:var(--gold);border-radius:2px;transition:width .3s;}
+.fc-card{
+  background:white;border:3px double var(--border);border-radius:12px;
+  min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;padding:20px;text-align:center;margin-bottom:12px;user-select:none;
+  transition:background .2s;
+}
+.fc-card.flipped{background:#f9f6ee;}
+.fc-hint{font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px;}
+.fc-main{font-size:76px;line-height:1;}
+.fc-main.h{color:var(--hira);} .fc-main.k{color:var(--kata);}
+.fc-roma{font-size:30px;letter-spacing:5px;font-weight:700;color:var(--ink);}
+.fc-sub{font-size:11px;color:var(--muted);margin-top:6px;}
+.fc-ex{font-size:10px;color:var(--muted);margin-top:4px;}
+.srs-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px;}
+.srsbtn{padding:10px 3px;border:2px solid var(--border);background:white;border-radius:7px;cursor:pointer;font-size:11px;font-family:inherit;display:none;}
+.srsbtn.show{display:block;}
+.srsbtn span{display:block;font-size:9px;color:var(--muted);margin-top:2px;}
+.srsbtn.hard{border-color:var(--wrong);color:var(--wrong);}
+.srsbtn.ok2{border-color:var(--gold);color:var(--gold);}
+.srsbtn.easy{border-color:var(--ok);color:var(--ok);}
+.btn-next{width:100%;padding:10px;background:transparent;border:2px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;color:var(--muted);font-family:inherit;}
+
+/* ── QUIZ ── */
+.qtopbar{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:10px;}
+.qpbar{height:4px;background:var(--border);border-radius:2px;margin-bottom:14px;overflow:hidden;}
+.qpfill{height:100%;background:var(--red);border-radius:2px;transition:width .4s;}
+.qcard{
+  background:white;border:3px double var(--border);border-radius:10px;
+  min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:18px 14px 14px;text-align:center;margin-bottom:12px;
+}
+.qlabel{font-size:9px;color:var(--muted);letter-spacing:3px;margin-bottom:7px;}
+.qchar{font-size:76px;line-height:1;color:var(--hira);}
+.qroma{font-size:32px;letter-spacing:5px;font-weight:800;color:var(--ink);}
+.qword{font-size:26px;color:var(--ink);margin-bottom:3px;}
+.qword .hl{color:var(--red);border-bottom:2px solid var(--red);}
+.qwordmean{font-size:11px;color:var(--muted);}
+.qopts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.qopt{
+  padding:12px 6px;border:2px solid var(--border);background:white;border-radius:7px;
+  cursor:pointer;font-size:22px;color:var(--ink);display:flex;flex-direction:column;
+  align-items:center;gap:3px;font-family:inherit;transition:all .15s;
+}
+.qopt:active:not(:disabled){transform:scale(.97);}
+.qopt .sub{font-size:9px;color:var(--muted);}
+.qopt.correct{background:#e8f5e9;border-color:var(--ok);color:var(--ok);}
+.qopt.wrong{background:#fdecea;border-color:var(--wrong);color:var(--wrong);}
+.btn-qnext{width:100%;padding:13px;background:var(--ink);color:var(--paper);border:none;border-radius:7px;cursor:pointer;font-size:13px;letter-spacing:3px;font-family:inherit;display:none;}
+.btn-qnext.show{display:block;}
+.resbox{background:white;border:3px double var(--border);border-radius:10px;padding:36px 20px;text-align:center;}
+.resscore{font-size:54px;color:var(--red);font-weight:800;line-height:1;}
+.resof{font-size:16px;color:var(--muted);margin-bottom:8px;}
+.resmsg{font-size:14px;color:var(--ink);margin-bottom:20px;letter-spacing:1px;}
+.btn-restart{padding:11px 26px;background:var(--red);color:white;border:none;border-radius:7px;cursor:pointer;font-size:13px;letter-spacing:2px;font-family:inherit;}
+
+/* safe area bottom */
+#nav{padding-bottom:env(safe-area-inset-bottom,0);}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="header-inner">
+    <div class="site-title">五十音道場</div>
+    <div class="site-sub">平假名 · 片假名 · 全方位學習</div>
+  </div>
+</div>
+
+<div id="stats">
+  <div class="sc"><strong id="s-l">0</strong>已學</div>
+  <div class="sc"><strong id="s-p">0%</strong>進度</div>
+  <div class="sc"><strong id="s-a">—</strong>正確率</div>
+  <div class="sc"><strong id="s-d">0</strong>待複習</div>
+</div>
+
+<div id="nav">
+  <button class="nb active" onclick="goTab('map')">🗺 關卡</button>
+  <button class="nb" onclick="goTab('chart')">📋 字表</button>
+  <button class="nb" onclick="goTab('fc')">🃏 翻卡</button>
+  <button class="nb" onclick="goTab('quiz')">✏️ 測驗</button>
+</div>
+
+<div id="content">
+  <!-- MAP -->
+  <div class="tab show" id="tab-map">
+    <div class="map-grid" id="mgrid"></div>
+  </div>
+
+  <!-- CHART -->
+  <div class="tab" id="tab-chart">
+    <div class="frow">
+      <button class="fb active" onclick="cf('both')">平＋片</button>
+      <button class="fb" onclick="cf('hira')">平假名</button>
+      <button class="fb" onclick="cf('kata')">片假名</button>
+      <button class="fb" onclick="cf('dak')">濁音</button>
+    </div>
+    <div id="kgrid"></div>
+  </div>
+
+  <!-- FLASHCARD -->
+  <div class="tab" id="tab-fc">
+    <div class="fcc">
+      <button class="fcb active" onclick="setFM('srs')">🔁 SRS</button>
+      <button class="fcb" onclick="setFM('hira')">平假名</button>
+      <button class="fcb" onclick="setFM('kata')">片假名</button>
+      <button class="fcb" onclick="setFM('all')">全部</button>
+    </div>
+    <div class="fc-info">
+      <span>第 <span id="fci">1</span> / <span id="fct">—</span> 張</span>
+      <span id="fclbl" style="color:var(--gold)"></span>
+    </div>
+    <div class="fc-pbar"><div class="fc-pfill" id="fcpf" style="width:0%"></div></div>
+    <div class="fc-card" id="fccard" onclick="flipFC()">
+      <div class="fc-hint" id="fc-hint">點擊翻面查看答案</div>
+      <div id="fc-main-char" class="fc-main h"></div>
+      <div id="fc-main-type" style="font-size:10px;color:var(--muted);margin-top:4px"></div>
+      <div id="fc-back-roma" class="fc-roma" style="display:none"></div>
+      <div id="fc-back-pair" class="fc-sub" style="display:none"></div>
+      <div id="fc-back-ex" class="fc-ex" style="display:none"></div>
+    </div>
+    <div class="srs-btns" id="srsbtns">
+      <button class="srsbtn hard" onclick="srsAns('hard')">✗ 記不住<span>1天後</span></button>
+      <button class="srsbtn ok2" onclick="srsAns('ok')">△ 有印象<span>3天後</span></button>
+      <button class="srsbtn easy" onclick="srsAns('easy')">✓ 記住了<span>7天後</span></button>
+    </div>
+    <button class="btn-next" onclick="nextFC()">下一張 →</button>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="tab" id="tab-quiz">
+    <div class="fcc" id="qctrl">
+      <button class="fcb active" onclick="setQT('c2r')">看字選音</button>
+      <button class="fcb" onclick="setQT('r2c')">看音選字</button>
+      <button class="fcb" onclick="setQT('word')">情境單字</button>
+    </div>
+    <div id="qplay">
+      <div class="qtopbar">
+        <span>第 <span id="qn">1</span>/<span id="qt">10</span> 題</span>
+        <span>✓<span id="qc">0</span> ✗<span id="qw">0</span></span>
+      </div>
+      <div class="qpbar"><div class="qpfill" id="qpf" style="width:0%"></div></div>
+      <div class="qcard" id="qcard"></div>
+      <div class="qopts" id="qopts"></div>
+      <button class="btn-qnext" id="qnext" onclick="nextQ()">次の問題 →</button>
+    </div>
+    <div id="resbox" style="display:none">
+      <div class="resbox">
+        <div class="resscore" id="rs">0</div>
+        <div class="resof" id="ro"></div>
+        <div class="resmsg" id="rm"></div>
+        <button class="btn-restart" onclick="startQ()">再挑戰！</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="overlay" onclick="omOuter(event)">
+  <div id="modal-box">
+    <button class="modal-close" onclick="hideModal()">✕</button>
+    <div class="modal-big" id="m-char"></div>
+    <div class="modal-roma" id="m-roma"></div>
+    <div class="modal-orig" id="m-orig" style="display:none"></div>
+    <div class="modal-pair">
+      <div class="pi"><div class="pilabel">平假名</div><div class="pichar h" id="m-h"></div></div>
+      <div class="pi"><div class="pilabel">片假名</div><div class="pichar k" id="m-k"></div></div>
+    </div>
+    <div class="wlabel">常見單字</div>
+    <div id="m-words" style="margin-bottom:4px"></div>
+    <div class="mbtns">
+      <button class="btn-speak" onclick="speakM()">🔊 發音</button>
+      <button class="btn-learn" id="btn-learn" onclick="toggleL()">標為已學</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════ DATA ═══════════════
+var ROWS=[
+  {label:"あ行",row:"a",  pairs:[["あ","ア","a"],["い","イ","i"],["う","ウ","u"],["え","エ","e"],["お","オ","o"]]},
+  {label:"か行",row:"ka", pairs:[["か","カ","ka"],["き","キ","ki"],["く","ク","ku"],["け","ケ","ke"],["こ","コ","ko"]]},
+  {label:"さ行",row:"sa", pairs:[["さ","サ","sa"],["し","シ","shi"],["す","ス","su"],["せ","セ","se"],["そ","ソ","so"]]},
+  {label:"た行",row:"ta", pairs:[["た","タ","ta"],["ち","チ","chi"],["つ","ツ","tsu"],["て","テ","te"],["と","ト","to"]]},
+  {label:"な行",row:"na", pairs:[["な","ナ","na"],["に","ニ","ni"],["ぬ","ヌ","nu"],["ね","ネ","ne"],["の","ノ","no"]]},
+  {label:"は行",row:"ha", pairs:[["は","ハ","ha"],["ひ","ヒ","hi"],["ふ","フ","fu"],["へ","ヘ","he"],["ほ","ホ","ho"]]},
+  {label:"ま行",row:"ma", pairs:[["ま","マ","ma"],["み","ミ","mi"],["む","ム","mu"],["め","メ","me"],["も","モ","mo"]]},
+  {label:"や行",row:"ya", pairs:[["や","ヤ","ya"],null,["ゆ","ユ","yu"],null,["よ","ヨ","yo"]]},
+  {label:"ら行",row:"ra", pairs:[["ら","ラ","ra"],["り","リ","ri"],["る","ル","ru"],["れ","レ","re"],["ろ","ロ","ro"]]},
+  {label:"わ行",row:"wa", pairs:[["わ","ワ","wa"],null,null,null,["を","ヲ","wo"]]},
+  {label:"ん",  row:"n",  pairs:[["ん","ン","n"],null,null,null,null]},
+];
+var DAK=[
+  {label:"が行",row:"ga",pairs:[["が","ガ","ga"],["ぎ","ギ","gi"],["ぐ","グ","gu"],["げ","ゲ","ge"],["ご","ゴ","go"]]},
+  {label:"ざ行",row:"za",pairs:[["ざ","ザ","za"],["じ","ジ","ji"],["ず","ズ","zu"],["ぜ","ゼ","ze"],["ぞ","ゾ","zo"]]},
+  {label:"ば行",row:"ba",pairs:[["ば","バ","ba"],["び","ビ","bi"],["ぶ","ブ","bu"],["べ","ベ","be"],["ぼ","ボ","bo"]]},
+  {label:"ぱ行",row:"pa",pairs:[["ぱ","パ","pa"],["ぴ","ピ","pi"],["ぷ","プ","pu"],["ぺ","ペ","pe"],["ぽ","ポ","po"]]},
+];
+var WORDS={
+  a:[{jp:"あめ",m:"雨"},{jp:"あか",m:"紅色"}],i:[{jp:"いぬ",m:"狗"},{jp:"いえ",m:"家"}],
+  u:[{jp:"うみ",m:"海"},{jp:"うた",m:"歌"}],e:[{jp:"えき",m:"車站"}],o:[{jp:"おかし",m:"點心"}],
+  ka:[{jp:"かさ",m:"傘"},{jp:"かに",m:"螃蟹"}],ki:[{jp:"きって",m:"郵票"}],
+  ku:[{jp:"くるま",m:"車"},{jp:"くも",m:"雲"}],ke:[{jp:"けいたい",m:"手機"}],ko:[{jp:"こども",m:"小孩"}],
+  sa:[{jp:"さくら",m:"櫻花"}],shi:[{jp:"しお",m:"鹽"}],su:[{jp:"すし",m:"壽司"}],
+  se:[{jp:"せんせい",m:"老師"}],so:[{jp:"そら",m:"天空"}],
+  ta:[{jp:"たまご",m:"雞蛋"}],chi:[{jp:"ちかてつ",m:"地鐵"}],tsu:[{jp:"つき",m:"月亮"}],
+  te:[{jp:"てがみ",m:"信件"}],to:[{jp:"とり",m:"鳥"},{jp:"とけい",m:"時鐘"}],
+  na:[{jp:"なつ",m:"夏天"}],ni:[{jp:"にほん",m:"日本"}],nu:[{jp:"ぬの",m:"布料"}],
+  ne:[{jp:"ねこ",m:"貓"}],no:[{jp:"のり",m:"海苔"}],
+  ha:[{jp:"はな",m:"花"},{jp:"はし",m:"筷子"}],hi:[{jp:"ひこうき",m:"飛機"}],
+  fu:[{jp:"ふじさん",m:"富士山"}],he:[{jp:"へや",m:"房間"}],ho:[{jp:"ほし",m:"星星"},{jp:"ほん",m:"書"}],
+  ma:[{jp:"まち",m:"城市"}],mi:[{jp:"みず",m:"水"},{jp:"みかん",m:"橘子"}],
+  mu:[{jp:"むし",m:"昆蟲"}],me:[{jp:"めがね",m:"眼鏡"}],mo:[{jp:"もり",m:"森林"}],
+  ya:[{jp:"やま",m:"山"}],yu:[{jp:"ゆき",m:"雪"}],yo:[{jp:"よる",m:"夜晚"}],
+  ra:[{jp:"らーめん",m:"拉麵"}],ri:[{jp:"りんご",m:"蘋果"}],ru:[{jp:"るすばん",m:"留守番"}],
+  re:[{jp:"れいぞうこ",m:"冰箱"}],ro:[{jp:"ろうそく",m:"蠟燭"}],
+  wa:[{jp:"わたし",m:"我"}],wo:[{jp:"を",m:"助詞"}],n:[{jp:"ん",m:"撥音"}]
+};
+var ORIG={
+  a:"安",i:"以",u:"宇",e:"衣",o:"於",ka:"加",ki:"幾",ku:"久",ke:"計",ko:"己",
+  sa:"左",shi:"之",su:"寸",se:"世",so:"曾",ta:"太",chi:"知",tsu:"川",te:"天",to:"止",
+  na:"奈",ni:"仁",nu:"奴",ne:"祢",no:"乃",ha:"波",hi:"比",fu:"不",he:"部",ho:"保",
+  ma:"末",mi:"美",mu:"武",me:"女",mo:"毛",ya:"也",yu:"由",yo:"與",
+  ra:"良",ri:"利",ru:"流",re:"禮",ro:"呂",wa:"和",wo:"遠",n:"无"
+};
+
+// ═══════════════ STATE ═══════════════
+var learned=new Set(JSON.parse(localStorage.getItem("kd_l")||"[]"));
+var srs=JSON.parse(localStorage.getItem("kd_s")||"{}");
+var qst=JSON.parse(localStorage.getItem("kd_q")||'{"c":0,"t":0}');
+function save(){
+  localStorage.setItem("kd_l",JSON.stringify(Array.from(learned)));
+  localStorage.setItem("kd_s",JSON.stringify(srs));
+  localStorage.setItem("kd_q",JSON.stringify(qst));
+}
+function allP(dak){
+  var o=[];
+  var sets=dak?ROWS.concat(DAK):ROWS;
+  for(var i=0;i<sets.length;i++)for(var j=0;j<sets[i].pairs.length;j++)if(sets[i].pairs[j])o.push(sets[i].pairs[j]);
+  return o;
+}
+function dueP(){
+  var now=Date.now();
+  return allP(true).filter(function(p){var d=srs[p[2]];return !d||d.due<=now;});
+}
+function shuf(a){var b=a.slice();for(var i=b.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=b[i];b[i]=b[j];b[j]=t;}return b;}
+function spk(t){try{var u=new SpeechSynthesisUtterance(t);u.lang="ja-JP";u.rate=0.85;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){}}
+
+// ═══════════════ STATS ═══════════════
+function updateS(){
+  var total=allP(false).length;
+  document.getElementById("s-l").textContent=learned.size;
+  document.getElementById("s-p").textContent=Math.round(learned.size/total*100)+"%";
+  document.getElementById("s-a").textContent=qst.t>0?Math.round(qst.c/qst.t*100)+"%":"—";
+  document.getElementById("s-d").textContent=dueP().length;
+}
+
+// ═══════════════ TABS ═══════════════
+var TABS=["map","chart","fc","quiz"];
+function goTab(t){
+  TABS.forEach(function(id,i){
+    document.getElementById("tab-"+id).classList.toggle("show",id===t);
+    document.querySelectorAll(".nb")[i].classList.toggle("active",id===t);
+  });
+  if(t==="map")renderMap();
+  if(t==="chart")renderChart();
+  if(t==="fc")initFC();
+  if(t==="quiz")startQ();
+  updateS();
+}
+
+// ═══════════════ MAP ═══════════════
+var ALLROWS=ROWS.concat(DAK);
+function renderMap(){
+  var g=document.getElementById("mgrid");g.innerHTML="";
+  ALLROWS.forEach(function(row,idx){
+    var vp=row.pairs.filter(Boolean);
+    var lc=vp.filter(function(p){return learned.has(p[2]);}).length;
+    var pct=Math.round(lc/vp.length*100);
+    var unlocked=idx<3||learned.size>=idx*3;
+    var done=lc===vp.length;
+    var c=document.createElement("div");
+    c.className="mc"+(done?" done":"")+(unlocked?"":" locked");
+    if(unlocked){
+      c.innerHTML='<div class="mc-kana">'+vp[0][0]+'</div><div class="mc-name">'+row.label+'</div><div class="mc-prog"><div class="mc-progf" style="width:'+pct+'%"></div></div>';
+      (function(r){c.onclick=function(){cf("both");goTab("chart");setTimeout(function(){var el=document.querySelector('[data-row="'+r+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"start"});},100);};})(row.row);
+    }else{
+      c.innerHTML='<div style="font-size:20px">🔒</div><div class="mc-name">'+row.label+"</div>";
+    }
+    g.appendChild(c);
+  });
+}
+
+// ═══════════════ CHART ═══════════════
+var chartF="both";
+function cf(f){
+  chartF=f;
+  var labs=["both","hira","kata","dak"];
+  document.querySelectorAll("#tab-chart .fb").forEach(function(b,i){b.classList.toggle("active",labs[i]===f);});
+  renderChart();
+}
+function renderChart(){
+  var g=document.getElementById("kgrid");g.innerHTML="";
+  var rs=chartF==="dak"?DAK:ROWS;
+  var now=Date.now();
+  rs.forEach(function(row){
+    var rg=document.createElement("div");rg.className="rgroup";rg.setAttribute("data-row",row.row);
+    rg.innerHTML='<div class="rlabel">'+row.label+"</div>";
+    var kr=document.createElement("div");kr.className="krow";
+    row.pairs.forEach(function(p){
+      var c=document.createElement("div");
+      if(!p){c.className="kc empty";}
+      else{
+        var isL=learned.has(p[2]);
+        var due=srs[p[2]]&&srs[p[2]].due<=now;
+        c.className="kc"+(isL?" learned":"")+(due?" due":"");
+        var useK=chartF==="kata";
+        var ch=useK?p[1]:p[0];
+        var cl=useK?"k":"h";
+        c.innerHTML='<span class="kchar '+cl+'">'+ch+'</span><span class="kroma">'+p[2]+"</span>";
+        (function(pp,uk){c.onclick=function(){showModal(pp,uk);};})(p,useK);
+      }
+      kr.appendChild(c);
+    });
+    rg.appendChild(kr);g.appendChild(rg);
+  });
+}
+
+// ═══════════════ MODAL ═══════════════
+var mPair=null;
+function showModal(p,asK){
+  mPair=p;
+  var ch=asK?p[1]:p[0];
+  var mc=document.getElementById("m-char");mc.textContent=ch;mc.className="modal-big "+(asK?"k":"h");
+  document.getElementById("m-roma").textContent=p[2];
+  var org=ORIG[p[2]];var oe=document.getElementById("m-orig");
+  if(org){oe.innerHTML="字源：漢字 <strong>"+org+"</strong> 草書演變";oe.style.display="block";}
+  else oe.style.display="none";
+  document.getElementById("m-h").textContent=p[0];
+  document.getElementById("m-k").textContent=p[1];
+  var ws=WORDS[p[2]]||[];
+  document.getElementById("m-words").innerHTML=ws.map(function(w){return'<span class="wpill"><span class="wjp">'+w.jp+'</span><span class="wmean">'+w.m+"</span></span>";}).join("");
+  var bl=document.getElementById("btn-learn");
+  bl.textContent=learned.has(p[2])?"✓ 已學":"標為已學";
+  bl.className="btn-learn"+(learned.has(p[2])?" done":"");
+  document.getElementById("overlay").classList.add("show");
+}
+function hideModal(){document.getElementById("overlay").classList.remove("show");}
+function omOuter(e){if(e.target.id==="overlay")hideModal();}
+function speakM(){if(mPair)spk(mPair[0]);}
+function toggleL(){
+  if(!mPair)return;
+  var k=mPair[2];
+  if(learned.has(k))learned.delete(k);else learned.add(k);
+  save();updateS();renderChart();renderMap();
+  var bl=document.getElementById("btn-learn");
+  bl.textContent=learned.has(k)?"✓ 已學":"標為已學";
+  bl.className="btn-learn"+(learned.has(k)?" done":"");
+}
+
+// ═══════════════ FLASHCARD ═══════════════
+var fcDeck=[],fcPos=0,fcFlip=false,fcMode="srs";
+function setFM(m){
+  fcMode=m;
+  var ms=["srs","hira","kata","all"];
+  document.querySelectorAll(".fcc .fcb").forEach(function(b,i){b.classList.toggle("active",ms[i]===m);});
+  initFC();
+}
+function initFC(){
+  fcFlip=false;
+  document.getElementById("fccard").classList.remove("flipped");
+  showSRS(false);
+  var dp=dueP();
+  if(fcMode==="srs"){fcDeck=shuf(dp.length?dp:allP(false));document.getElementById("fclbl").textContent="待複習："+dp.length+"張";}
+  else if(fcMode==="all"){fcDeck=shuf(allP(true));document.getElementById("fclbl").textContent="";}
+  else{fcDeck=shuf(allP(false));document.getElementById("fclbl").textContent="";}
+  if(!fcDeck.length)fcDeck=shuf(allP(false));
+  fcPos=0;renderFC();
+}
+function renderFC(){
+  if(fcPos>=fcDeck.length)fcPos=0;
+  var p=fcDeck[fcPos];
+  var useK=fcMode==="kata";
+  var ch=useK?p[1]:p[0];
+  var cl=useK?"k":"h";
+  var fch=document.getElementById("fc-main-char");
+  fch.textContent=ch;fch.className="fc-main "+cl;
+  document.getElementById("fc-main-type").textContent=useK?"片假名":"平假名";
+  document.getElementById("fc-hint").textContent="點擊翻面查看答案";
+  document.getElementById("fc-back-roma").style.display="none";
+  document.getElementById("fc-back-pair").style.display="none";
+  document.getElementById("fc-back-ex").style.display="none";
+  document.getElementById("fci").textContent=fcPos+1;
+  document.getElementById("fct").textContent=fcDeck.length;
+  document.getElementById("fcpf").style.width=(fcPos/fcDeck.length*100)+"%";
+  fcFlip=false;document.getElementById("fccard").classList.remove("flipped");
+  showSRS(false);
+}
+function flipFC(){
+  if(fcFlip)return;
+  fcFlip=true;
+  var p=fcDeck[fcPos];
+  document.getElementById("fccard").classList.add("flipped");
+  document.getElementById("fc-hint").textContent="讀音";
+  document.getElementById("fc-main-char").style.display="none";
+  document.getElementById("fc-main-type").style.display="none";
+  var br=document.getElementById("fc-back-roma");br.textContent=p[2];br.style.display="block";
+  var bp=document.getElementById("fc-back-pair");bp.textContent="平："+p[0]+"　片："+p[1];bp.style.display="block";
+  var ws=WORDS[p[2]];
+  if(ws&&ws[0]){var be=document.getElementById("fc-back-ex");be.textContent="例："+ws[0].jp+"（"+ws[0].m+"）";be.style.display="block";}
+  if(fcMode==="srs")showSRS(true);
+  learned.add(p[2]);save();updateS();
+}
+function showSRS(v){document.querySelectorAll(".srsbtn").forEach(function(b){b.classList.toggle("show",v);});}
+function nextFC(){
+  document.getElementById("fc-main-char").style.display="";
+  document.getElementById("fc-main-type").style.display="";
+  fcPos=(fcPos+1)%fcDeck.length;renderFC();
+}
+function srsAns(r){
+  var p=fcDeck[fcPos];var now=Date.now();var DAY=86400000;
+  var d=srs[p[2]]||{interval:1,ef:2.5,due:now};var nd={interval:d.interval,ef:d.ef,due:d.due};
+  if(r==="easy"){nd.interval=Math.round(nd.interval*nd.ef);nd.ef=Math.min(3,nd.ef+0.15);}
+  else if(r==="ok"){nd.interval=Math.round(nd.interval*Math.max(1.3,nd.ef-0.1));}
+  else{nd.interval=1;nd.ef=Math.max(1.3,nd.ef-0.2);}
+  nd.due=now+nd.interval*DAY;
+  srs[p[2]]=nd;save();updateS();
+  document.getElementById("fc-main-char").style.display="";
+  document.getElementById("fc-main-type").style.display="";
+  fcPos=(fcPos+1)%fcDeck.length;renderFC();
+}
+
+// ═══════════════ QUIZ ═══════════════
+var qType="c2r",qQs=[],qIdx=0,qC=0,qW=0;
+function setQT(t){
+  qType=t;
+  var ts=["c2r","r2c","word"];
+  document.querySelectorAll("#qctrl .fcb").forEach(function(b,i){b.classList.toggle("active",ts[i]===t);});
+  startQ();
+}
+function startQ(){
+  document.getElementById("resbox").style.display="none";
+  document.getElementById("qplay").style.display="";
+  qQs=shuf(allP(false)).slice(0,10);
+  qIdx=0;qC=0;qW=0;renderQ();
+}
+function renderQ(){
+  var q=qQs[qIdx];
+  document.getElementById("qn").textContent=qIdx+1;
+  document.getElementById("qt").textContent=qQs.length;
+  document.getElementById("qc").textContent=qC;
+  document.getElementById("qw").textContent=qW;
+  document.getElementById("qpf").style.width=(qIdx/qQs.length*100)+"%";
+  document.getElementById("qnext").classList.remove("show");
+  var pool=allP(false);
+  var wrongs=shuf(pool.filter(function(p){return p[2]!==q[2];})).slice(0,3);
+  var opts=shuf([q].concat(wrongs));
+  var card=document.getElementById("qcard");
+  var od=document.getElementById("qopts");od.innerHTML="";
+  if(qType==="c2r"){
+    card.innerHTML='<div class="qlabel">這個假名的讀音是？</div><div class="qchar">'+q[0]+"</div>";
+    opts.forEach(function(o){
+      var b=document.createElement("button");b.className="qopt";
+      b.innerHTML='<span style="font-size:14px;letter-spacing:3px">'+o[2]+"</span>";
+      (function(oo){b.onclick=function(){ansQ(b,oo[2],q[2],q);};})(o);od.appendChild(b);
+    });
+  }else if(qType==="r2c"){
+    card.innerHTML='<div class="qlabel">哪個假名代表此讀音？</div><div class="qroma">'+q[2]+"</div>";
+    opts.forEach(function(o){
+      var b=document.createElement("button");b.className="qopt";
+      b.innerHTML="<span>"+o[0]+'</span><span class="sub">'+o[1]+"</span>";
+      (function(oo){b.onclick=function(){ansQ(b,oo[2],q[2],q);};})(o);od.appendChild(b);
+    });
+  }else{
+    var ws=WORDS[q[2]];var w=ws&&ws[0]?ws[0]:null;
+    if(w){
+      var hi=w.jp.replace(q[0],'<span class="hl">'+q[0]+"</span>");
+      card.innerHTML='<div class="qlabel">劃線假名的讀音？</div><div class="qword">'+hi+'</div><div class="qwordmean">'+w.m+"</div>";
+    }else{
+      card.innerHTML='<div class="qlabel">讀音是？</div><div class="qchar">'+q[0]+"</div>";
+    }
+    opts.forEach(function(o){
+      var b=document.createElement("button");b.className="qopt";
+      b.innerHTML='<span style="font-size:14px;letter-spacing:3px">'+o[2]+"</span>";
+      (function(oo){b.onclick=function(){ansQ(b,oo[2],q[2],q);};})(o);od.appendChild(b);
+    });
+  }
+}
+function ansQ(btn,chosen,correct,q){
+  document.querySelectorAll(".qopt").forEach(function(b){b.disabled=true;});
+  var right=chosen===correct;
+  btn.classList.add(right?"correct":"wrong");
+  if(!right){document.querySelectorAll(".qopt").forEach(function(b){if(b.textContent.indexOf(correct)>=0)b.classList.add("correct");});}
+  if(right){qC++;learned.add(correct);}else qW++;
+  qst.c+=(right?1:0);qst.t++;save();updateS();
+  var nb=document.getElementById("qnext");nb.classList.add("show");
+  nb.textContent=qIdx+1>=qQs.length?"查看結果 →":"次の問題 →";
+  spk(q[0]);
+}
+function nextQ(){
+  qIdx++;
+  if(qIdx>=qQs.length){showRes();return;}
+  renderQ();
+}
+function showRes(){
+  document.getElementById("qplay").style.display="none";
+  document.getElementById("resbox").style.display="block";
+  document.getElementById("rs").textContent=qC;
+  document.getElementById("ro").textContent="/ "+qQs.length+" 題";
+  var pct=Math.round(qC/qQs.length*100);
+  document.getElementById("rm").textContent=pct===100?"🌸 滿分！完美通過！":pct>=80?"🎌 非常好！再接再厲！":pct>=60?"📖 不錯！繼續練習！":"💪 熟能生巧，多練習！";
+  updateS();
+}
+
+// ═══════════════ INIT ═══════════════
+renderMap();
+renderChart();
+updateS();
+
+// PWA Service Worker
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("./sw.js").catch(function(){});
+}
+</script>
+</body>
+</html>
