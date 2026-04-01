@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="五十音道場">
@@ -126,7 +126,9 @@ body{
 .pichar.h{font-size:30px;color:var(--hira);}
 .pichar.k{font-size:30px;color:var(--kata);}
 .wlabel{font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:5px;}
-.wpill{display:inline-flex;align-items:center;gap:4px;background:white;border:1px solid var(--border);border-radius:20px;padding:3px 9px;margin:2px;font-size:11px;}
+.wpill{display:inline-flex;align-items:center;gap:4px;background:white;border:1px solid var(--border);border-radius:20px;padding:3px 9px;margin:2px;font-size:11px;cursor:pointer;transition:background .15s,border-color .15s;}
+.wpill:active{background:#fdecea;border-color:var(--hira);}
+.wpill::before{content:"🔊";font-size:10px;opacity:0.5;}
 .wjp{font-size:13px;color:var(--hira);}
 .wmean{color:var(--muted);}
 .mbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px;}
@@ -481,7 +483,7 @@ function showModal(p,asK){
   document.getElementById("m-h").textContent=p[0];
   document.getElementById("m-k").textContent=p[1];
   var ws=WORDS[p[2]]||[];
-  document.getElementById("m-words").innerHTML=ws.map(function(w){return'<span class="wpill"><span class="wjp">'+w.jp+'</span><span class="wmean">'+w.m+"</span></span>";}).join("");
+  document.getElementById("m-words").innerHTML=ws.map(function(w){return'<span class="wpill" onclick="spk(\''+w.jp+'\')"><span class="wjp">'+w.jp+'</span><span class="wmean">'+w.m+"</span></span>";}).join("");
   var bl=document.getElementById("btn-learn");
   bl.textContent=learned.has(p[2])?"✓ 已學":"標為已學";
   bl.className="btn-learn"+(learned.has(p[2])?" done":"");
