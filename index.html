@@ -223,6 +223,7 @@ body{
   <button class="nb" onclick="goTab('chart')">📋 字表</button>
   <button class="nb" onclick="goTab('fc')">🃏 翻卡</button>
   <button class="nb" onclick="goTab('quiz')">✏️ 測驗</button>
+  <button class="nb" onclick="goTab('n5')">📚 N5</button>
 </div>
 
 <div id="content">
@@ -274,8 +275,10 @@ body{
   <!-- QUIZ -->
   <div class="tab" id="tab-quiz">
     <div class="fcc" id="qctrl">
-      <button class="fcb active" onclick="setQT('c2r')">看字選音</button>
-      <button class="fcb" onclick="setQT('r2c')">看音選字</button>
+      <button class="fcb active" onclick="setQT('c2r')">平→音</button>
+      <button class="fcb" onclick="setQT('r2c')">音→平</button>
+      <button class="fcb" onclick="setQT('kata-c2r')">片→音</button>
+      <button class="fcb" onclick="setQT('kata-r2c')">音→片</button>
       <button class="fcb" onclick="setQT('word')">情境單字</button>
     </div>
     <div id="qplay">
@@ -294,6 +297,36 @@ body{
         <div class="resof" id="ro"></div>
         <div class="resmsg" id="rm"></div>
         <button class="btn-restart" onclick="startQ()">再挑戰！</button>
+      </div>
+    </div>
+  </div>
+  <!-- N5 -->
+  <div class="tab" id="tab-n5">
+    <div class="fcc" id="n5ctrl">
+      <button class="fcb active" onclick="setN5Mode('jp2zh')">日→中</button>
+      <button class="fcb" onclick="setN5Mode('zh2jp')">中→日</button>
+      <button class="fcb" onclick="setN5Mode('roma2jp')">羅→日</button>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="n5catbtns"></div>
+      <div style="font-size:10px;color:var(--muted)">共 <span id="n5total">—</span> 題</div>
+    </div>
+    <div id="n5play">
+      <div class="qtopbar">
+        <span>第 <span id="n5n">1</span>/<span id="n5t">10</span> 題</span>
+        <span>✓<span id="n5c">0</span> ✗<span id="n5w">0</span></span>
+      </div>
+      <div class="qpbar"><div class="qpfill" id="n5pf" style="width:0%"></div></div>
+      <div class="qcard" id="n5card"></div>
+      <div class="qopts" id="n5opts"></div>
+      <button class="btn-qnext" id="n5next" onclick="nextN5()">次の問題 →</button>
+    </div>
+    <div id="n5resbox" style="display:none">
+      <div class="resbox">
+        <div class="resscore" id="n5rs">0</div>
+        <div class="resof" id="n5ro"></div>
+        <div class="resmsg" id="n5rm"></div>
+        <button class="btn-restart" onclick="startN5()">再挑戰！</button>
       </div>
     </div>
   </div>
@@ -400,7 +433,7 @@ function updateS(){
 }
 
 // ═══════════════ TABS ═══════════════
-var TABS=["map","chart","fc","quiz"];
+var TABS=["map","chart","fc","quiz","n5"];
 function goTab(t){
   TABS.forEach(function(id,i){
     document.getElementById("tab-"+id).classList.toggle("show",id===t);
@@ -410,6 +443,7 @@ function goTab(t){
   if(t==="chart")renderChart();
   if(t==="fc")initFC();
   if(t==="quiz")startQ();
+  if(t==="n5"){renderN5CatBtns();startN5();}
   updateS();
 }
 
@@ -578,7 +612,7 @@ function srsAns(r){
 var qType="c2r",qQs=[],qIdx=0,qC=0,qW=0;
 function setQT(t){
   qType=t;
-  var ts=["c2r","r2c","word"];
+  var ts=["c2r","r2c","kata-c2r","kata-r2c","word"];
   document.querySelectorAll("#qctrl .fcb").forEach(function(b,i){b.classList.toggle("active",ts[i]===t);});
   startQ();
 }
@@ -602,17 +636,31 @@ function renderQ(){
   var card=document.getElementById("qcard");
   var od=document.getElementById("qopts");od.innerHTML="";
   if(qType==="c2r"){
-    card.innerHTML='<div class="qlabel">這個假名的讀音是？</div><div class="qchar">'+q[0]+"</div>";
+    card.innerHTML='<div class="qlabel">這個<b style="color:var(--hira)">平假名</b>的讀音是？</div><div class="qchar" style="color:var(--hira)">'+q[0]+"</div>";
     opts.forEach(function(o){
       var b=document.createElement("button");b.className="qopt";
       b.innerHTML='<span style="font-size:14px;letter-spacing:3px">'+o[2]+"</span>";
       (function(oo){b.onclick=function(){ansQ(b,oo[2],q[2],q);};})(o);od.appendChild(b);
     });
   }else if(qType==="r2c"){
-    card.innerHTML='<div class="qlabel">哪個假名代表此讀音？</div><div class="qroma">'+q[2]+"</div>";
+    card.innerHTML='<div class="qlabel">哪個<b style="color:var(--hira)">平假名</b>代表此讀音？</div><div class="qroma">'+q[2]+"</div>";
     opts.forEach(function(o){
       var b=document.createElement("button");b.className="qopt";
-      b.innerHTML="<span>"+o[0]+'</span><span class="sub">'+o[1]+"</span>";
+      b.innerHTML='<span style="color:var(--hira)">'+o[0]+"</span>";
+      (function(oo){b.onclick=function(){ansQ(b,oo[2],q[2],q);};})(o);od.appendChild(b);
+    });
+  }else if(qType==="kata-c2r"){
+    card.innerHTML='<div class="qlabel">這個<b style="color:var(--kata)">片假名</b>的讀音是？</div><div class="qchar" style="color:var(--kata)">'+q[1]+"</div>";
+    opts.forEach(function(o){
+      var b=document.createElement("button");b.className="qopt";
+      b.innerHTML='<span style="font-size:14px;letter-spacing:3px">'+o[2]+"</span>";
+      (function(oo){b.onclick=function(){ansQ(b,oo[2],q[2],q);};})(o);od.appendChild(b);
+    });
+  }else if(qType==="kata-r2c"){
+    card.innerHTML='<div class="qlabel">哪個<b style="color:var(--kata)">片假名</b>代表此讀音？</div><div class="qroma">'+q[2]+"</div>";
+    opts.forEach(function(o){
+      var b=document.createElement("button");b.className="qopt";
+      b.innerHTML='<span style="color:var(--kata)">'+o[1]+"</span>";
       (function(oo){b.onclick=function(){ansQ(b,oo[2],q[2],q);};})(o);od.appendChild(b);
     });
   }else{
@@ -654,6 +702,339 @@ function showRes(){
   var pct=Math.round(qC/qQs.length*100);
   document.getElementById("rm").textContent=pct===100?"🌸 滿分！完美通過！":pct>=80?"🎌 非常好！再接再厲！":pct>=60?"📖 不錯！繼續練習！":"💪 熟能生巧，多練習！";
   updateS();
+}
+
+// ═══════════════ N5 NOUNS DATA ═══════════════
+// [jp, kana, romaji, zh, category]
+var N5W=[
+  // 人・身體
+  ["人","ひと","hito","人","人・身體"],["男","おとこ","otoko","男性","人・身體"],["女","おんな","onna","女性","人・身體"],
+  ["子供","こども","kodomo","小孩","人・身體"],["男の子","おとこのこ","otokonoko","男孩","人・身體"],["女の子","おんなのこ","onnanoko","女孩","人・身體"],
+  ["お父さん","おとうさん","otousan","爸爸","人・身體"],["お母さん","おかあさん","okaasan","媽媽","人・身體"],
+  ["お兄さん","おにいさん","oniisan","哥哥","人・身體"],["お姉さん","おねえさん","oneesan","姊姊","人・身體"],
+  ["弟","おとうと","otouto","弟弟","人・身體"],["妹","いもうと","imouto","妹妹","人・身體"],
+  ["友達","ともだち","tomodachi","朋友","人・身體"],["先生","せんせい","sensei","老師","人・身體"],
+  ["学生","がくせい","gakusei","學生","人・身體"],["会社員","かいしゃいん","kaishain","上班族","人・身體"],
+  ["医者","いしゃ","isha","醫生","人・身體"],["名前","なまえ","namae","名字","人・身體"],
+  ["頭","あたま","atama","頭","人・身體"],["顔","かお","kao","臉","人・身體"],
+  ["目","め","me","眼睛","人・身體"],["耳","みみ","mimi","耳朵","人・身體"],
+  ["口","くち","kuchi","嘴巴","人・身體"],["鼻","はな","hana","鼻子","人・身體"],
+  ["手","て","te","手","人・身體"],["足","あし","ashi","腳","人・身體"],
+  ["体","からだ","karada","身體","人・身體"],["声","こえ","koe","聲音","人・身體"],
+  // 食物・飲料
+  ["ご飯","ごはん","gohan","飯","食物・飲料"],["パン","パン","pan","麵包","食物・飲料"],
+  ["肉","にく","niku","肉","食物・飲料"],["魚","さかな","sakana","魚","食物・飲料"],
+  ["野菜","やさい","yasai","蔬菜","食物・飲料"],["果物","くだもの","kudamono","水果","食物・飲料"],
+  ["卵","たまご","tamago","雞蛋","食物・飲料"],["牛乳","ぎゅうにゅう","gyuunyuu","牛奶","食物・飲料"],
+  ["水","みず","mizu","水","食物・飲料"],["お茶","おちゃ","ocha","茶","食物・飲料"],
+  ["コーヒー","コーヒー","koohii","咖啡","食物・飲料"],["ビール","ビール","biiru","啤酒","食物・飲料"],
+  ["酒","さけ","sake","酒","食物・飲料"],["寿司","すし","sushi","壽司","食物・飲料"],
+  ["天ぷら","てんぷら","tenpura","天婦羅","食物・飲料"],["ラーメン","ラーメン","raamen","拉麵","食物・飲料"],
+  ["砂糖","さとう","satou","砂糖","食物・飲料"],["塩","しお","shio","鹽","食物・飲料"],
+  ["醤油","しょうゆ","shouyu","醬油","食物・飲料"],["味噌","みそ","miso","味噌","食物・飲料"],
+  ["弁当","べんとう","bentou","便當","食物・飲料"],["菓子","かし","kashi","點心","食物・飲料"],
+  ["朝ご飯","あさごはん","asagohan","早餐","食物・飲料"],["昼ご飯","ひるごはん","hirugohan","午餐","食物・飲料"],
+  ["晩ご飯","ばんごはん","bangohan","晚餐","食物・飲料"],
+  // 場所
+  ["学校","がっこう","gakkou","學校","場所"],["会社","かいしゃ","kaisha","公司","場所"],
+  ["病院","びょういん","byouin","醫院","場所"],["駅","えき","eki","車站","場所"],
+  ["銀行","ぎんこう","ginkou","銀行","場所"],["郵便局","ゆうびんきょく","yuubinkyoku","郵局","場所"],
+  ["図書館","としょかん","toshokan","圖書館","場所"],["公園","こうえん","kouen","公園","場所"],
+  ["映画館","えいがかん","eigakan","電影院","場所"],["レストラン","レストラン","resutoran","餐廳","場所"],
+  ["店","みせ","mise","店","場所"],["デパート","デパート","depaato","百貨公司","場所"],
+  ["スーパー","スーパー","suupaa","超市","場所"],["空港","くうこう","kuukou","機場","場所"],
+  ["ホテル","ホテル","hoteru","飯店","場所"],["家","いえ","ie","家","場所"],
+  ["部屋","へや","heya","房間","場所"],["台所","だいどころ","daidokoro","廚房","場所"],
+  ["トイレ","トイレ","toire","廁所","場所"],["お風呂","おふろ","ofuro","浴室","場所"],
+  ["庭","にわ","niwa","庭院","場所"],["山","やま","yama","山","場所"],
+  ["川","かわ","kawa","河川","場所"],["海","うみ","umi","海","場所"],
+  ["池","いけ","ike","池塘","場所"],["橋","はし","hashi","橋","場所"],
+  ["道","みち","michi","路","場所"],["町","まち","machi","城市","場所"],
+  ["国","くに","kuni","國家","場所"],
+  // 交通・物品
+  ["車","くるま","kuruma","車","交通・物品"],["電車","でんしゃ","densha","電車","交通・物品"],
+  ["バス","バス","basu","公車","交通・物品"],["タクシー","タクシー","takushii","計程車","交通・物品"],
+  ["飛行機","ひこうき","hikouki","飛機","交通・物品"],["自転車","じてんしゃ","jitensha","腳踏車","交通・物品"],
+  ["船","ふね","fune","船","交通・物品"],["切符","きっぷ","kippu","票","交通・物品"],
+  ["荷物","にもつ","nimotsu","行李","交通・物品"],["鞄","かばん","kaban","包包","交通・物品"],
+  ["財布","さいふ","saifu","錢包","交通・物品"],["傘","かさ","kasa","雨傘","交通・物品"],
+  ["眼鏡","めがね","megane","眼鏡","交通・物品"],["時計","とけい","tokei","時鐘","交通・物品"],
+  ["電話","でんわ","denwa","電話","交通・物品"],["テレビ","テレビ","terebi","電視","交通・物品"],
+  ["ラジオ","ラジオ","rajio","收音機","交通・物品"],["カメラ","カメラ","kamera","相機","交通・物品"],
+  ["新聞","しんぶん","shinbun","報紙","交通・物品"],["本","ほん","hon","書","交通・物品"],
+  ["雑誌","ざっし","zasshi","雜誌","交通・物品"],["手紙","てがみ","tegami","信件","交通・物品"],
+  ["お金","おかね","okane","錢","交通・物品"],["切手","きって","kitte","郵票","交通・物品"],
+  // 自然・時間
+  ["天気","てんき","tenki","天氣","自然・時間"],["空","そら","sora","天空","自然・時間"],
+  ["雨","あめ","ame","雨","自然・時間"],["雪","ゆき","yuki","雪","自然・時間"],
+  ["風","かぜ","kaze","風","自然・時間"],["花","はな","hana","花","自然・時間"],
+  ["木","き","ki","樹木","自然・時間"],["森","もり","mori","森林","自然・時間"],
+  ["星","ほし","hoshi","星星","自然・時間"],["月","つき","tsuki","月亮","自然・時間"],
+  ["太陽","たいよう","taiyou","太陽","自然・時間"],["朝","あさ","asa","早上","自然・時間"],
+  ["昼","ひる","hiru","中午","自然・時間"],["夜","よる","yoru","夜晚","自然・時間"],
+  ["今日","きょう","kyou","今天","自然・時間"],["明日","あした","ashita","明天","自然・時間"],
+  ["昨日","きのう","kinou","昨天","自然・時間"],["今年","ことし","kotoshi","今年","自然・時間"],
+  ["来年","らいねん","rainen","明年","自然・時間"],["去年","きょねん","kyonen","去年","自然・時間"],
+  ["春","はる","haru","春天","自然・時間"],["夏","なつ","natsu","夏天","自然・時間"],
+  ["秋","あき","aki","秋天","自然・時間"],["冬","ふゆ","fuyu","冬天","自然・時間"],
+  ["週末","しゅうまつ","shuumatsu","週末","自然・時間"],["休み","やすみ","yasumi","假期","自然・時間"],
+  // 動物・顏色
+  ["犬","いぬ","inu","狗","動物・顏色"],["猫","ねこ","neko","貓","動物・顏色"],
+  ["鳥","とり","tori","鳥","動物・顏色"],["魚","さかな","sakana","魚","動物・顏色"],
+  ["牛","うし","ushi","牛","動物・顏色"],["馬","うま","uma","馬","動物・顏色"],
+  ["豚","ぶた","buta","豬","動物・顏色"],["熊","くま","kuma","熊","動物・顏色"],
+  ["白","しろ","shiro","白色","動物・顏色"],["黒","くろ","kuro","黑色","動物・顏色"],
+  ["赤","あか","aka","紅色","動物・顏色"],["青","あお","ao","藍色","動物・顏色"],
+  ["黄色","きいろ","kiiro","黃色","動物・顏色"],["緑","みどり","midori","綠色","動物・顏色"],
+  // 生活・學習
+  ["勉強","べんきょう","benkyou","讀書","生活・學習"],["授業","じゅぎょう","jugyou","課程","生活・學習"],
+  ["宿題","しゅくだい","shukudai","作業","生活・學習"],["試験","しけん","shiken","考試","生活・學習"],
+  ["言葉","ことば","kotoba","語言","生活・學習"],["日本語","にほんご","nihongo","日語","生活・學習"],
+  ["英語","えいご","eigo","英語","生活・學習"],["字","じ","ji","字","生活・學習"],
+  ["仕事","しごと","shigoto","工作","生活・學習"],["休憩","きゅうけい","kyuukei","休息","生活・學習"],
+  ["映画","えいが","eiga","電影","生活・學習"],["音楽","おんがく","ongaku","音樂","生活・學習"],
+  ["歌","うた","uta","歌曲","生活・學習"],["写真","しゃしん","shashin","照片","生活・學習"],
+  ["旅行","りょこう","ryokou","旅行","生活・學習"],["買い物","かいもの","kaimono","購物","生活・學習"],
+  ["料理","りょうり","ryouri","料理","生活・學習"],["洗濯","せんたく","sentaku","洗衣","生活・學習"],
+  ["掃除","そうじ","souji","打掃","生活・學習"],["散歩","さんぽ","sanpo","散步","生活・學習"],
+  // 數量・方向
+  ["右","みぎ","migi","右邊","數量・方向"],["左","ひだり","hidari","左邊","數量・方向"],
+  ["上","うえ","ue","上面","數量・方向"],["下","した","shita","下面","數量・方向"],
+  ["前","まえ","mae","前面","數量・方向"],["後ろ","うしろ","ushiro","後面","數量・方向"],
+  ["中","なか","naka","裡面","數量・方向"],["外","そと","soto","外面","數量・方向"],
+  ["隣","となり","tonari","旁邊","數量・方向"],["間","あいだ","aida","之間","數量・方向"],
+  ["全部","ぜんぶ","zenbu","全部","數量・方向"],["半分","はんぶん","hanbun","一半","數量・方向"],
+  // 家具・家電
+  ["机","つくえ","tsukue","桌子","家具・家電"],["椅子","いす","isu","椅子","家具・家電"],
+  ["ベッド","ベッド","beddo","床","家具・家電"],["窓","まど","mado","窗戶","家具・家電"],
+  ["ドア","ドア","doa","門","家具・家電"],["壁","かべ","kabe","牆壁","家具・家電"],
+  ["床","ゆか","yuka","地板","家具・家電"],["天井","てんじょう","tenjou","天花板","家具・家電"],
+  ["階段","かいだん","kaidan","樓梯","家具・家電"],["電気","でんき","denki","電燈","家具・家電"],
+  ["冷蔵庫","れいぞうこ","reizouko","冰箱","家具・家電"],["洗濯機","せんたくき","sentakuki","洗衣機","家具・家電"],
+  ["エアコン","エアコン","eakon","冷氣","家具・家電"],["扇風機","せんぷうき","senpuuki","電風扇","家具・家電"],
+  ["電子レンジ","でんしレンジ","denshi renji","微波爐","家具・家電"],
+  // 服裝・配件
+  ["服","ふく","fuku","衣服","服裝・配件"],["シャツ","シャツ","shatsu","襯衫","服裝・配件"],
+  ["ズボン","ズボン","zubon","褲子","服裝・配件"],["スカート","スカート","sukaato","裙子","服裝・配件"],
+  ["コート","コート","kooto","外套","服裝・配件"],["靴","くつ","kutsu","鞋子","服裝・配件"],
+  ["靴下","くつした","kutsushita","襪子","服裝・配件"],["帽子","ぼうし","boushi","帽子","服裝・配件"],
+  ["手袋","てぶくろ","tebukuro","手套","服裝・配件"],["マフラー","マフラー","mafuraa","圍巾","服裝・配件"],
+  ["ネクタイ","ネクタイ","nekutai","領帶","服裝・配件"],["指輪","ゆびわ","yubiwa","戒指","服裝・配件"],
+  ["ハンカチ","ハンカチ","hankachi","手帕","服裝・配件"],["財布","さいふ","saifu","錢包","服裝・配件"],
+  // 文具・學習用品
+  ["鉛筆","えんぴつ","enpitsu","鉛筆","文具・學習"],["ペン","ペン","pen","原子筆","文具・學習"],
+  ["ノート","ノート","nooto","筆記本","文具・學習"],["教科書","きょうかしょ","kyoukasho","教科書","文具・學習"],
+  ["辞書","じしょ","jisho","字典","文具・學習"],["地図","ちず","chizu","地圖","文具・學習"],
+  ["消しゴム","けしゴム","keshigomu","橡皮擦","文具・學習"],["定規","じょうぎ","jougi","尺","文具・學習"],
+  ["はさみ","はさみ","hasami","剪刀","文具・學習"],["テープ","テープ","teepu","膠帶","文具・學習"],
+  // 運動・趣味
+  ["スポーツ","スポーツ","supootsu","運動","運動・趣味"],["サッカー","サッカー","sakkaa","足球","運動・趣味"],
+  ["野球","やきゅう","yakyuu","棒球","運動・趣味"],["テニス","テニス","tenisu","網球","運動・趣味"],
+  ["水泳","すいえい","suiei","游泳","運動・趣味"],["ゲーム","ゲーム","geemu","遊戲","運動・趣味"],
+  ["絵","え","e","繪畫","運動・趣味"],["本","ほん","hon","書","運動・趣味"],
+  ["料理","りょうり","ryouri","烹飪","運動・趣味"],["ダンス","ダンス","dansu","舞蹈","運動・趣味"],
+  // 健康・身體感覺
+  ["病気","びょうき","byouki","生病","健康・身體"],["熱","ねつ","netsu","發燒","健康・身體"],
+  ["風邪","かぜ","kaze","感冒","健康・身體"],["頭痛","ずつう","zutsuu","頭痛","健康・身體"],
+  ["腹痛","ふくつう","fukutsuu","腹痛","健康・身體"],["薬","くすり","kusuri","藥物","健康・身體"],
+  ["眠り","ねむり","nemuri","睡眠","健康・身體"],["疲れ","つかれ","tsukare","疲勞","健康・身體"],
+  ["痛み","いたみ","itami","疼痛","健康・身體"],["元気","げんき","genki","健康活力","健康・身體"],
+  // 數字・時間表達
+  ["一","いち","ichi","一","數字・計數"],["二","に","ni","二","數字・計數"],
+  ["三","さん","san","三","數字・計數"],["四","し・よん","shi/yon","四","數字・計數"],
+  ["五","ご","go","五","數字・計數"],["六","ろく","roku","六","數字・計數"],
+  ["七","しち・なな","shichi/nana","七","數字・計數"],["八","はち","hachi","八","數字・計數"],
+  ["九","く・きゅう","ku/kyuu","九","數字・計數"],["十","じゅう","juu","十","數字・計數"],
+  ["百","ひゃく","hyaku","百","數字・計數"],["千","せん","sen","千","數字・計數"],
+  ["万","まん","man","萬","數字・計數"],["何","なに","nani","什麼","數字・計數"],
+  ["今","いま","ima","現在","數字・計數"],["後","あと","ato","之後","數字・計數"],
+  ["前","まえ","mae","之前","數字・計數"],["一時間","いちじかん","ichijikan","一小時","數字・計數"],
+  ["一日","いちにち","ichinichi","一天","數字・計數"],["一週間","いっしゅうかん","isshuukan","一週","數字・計數"],
+  // 餐廳・購物
+  ["メニュー","メニュー","menyuu","菜單","餐廳・購物"],["注文","ちゅうもん","chuumon","點餐","餐廳・購物"],
+  ["値段","ねだん","nedan","價格","餐廳・購物"],["会計","かいけい","kaikei","結帳","餐廳・購物"],
+  ["領収書","りょうしゅうしょ","ryoushuusho","收據","餐廳・購物"],["袋","ふくろ","fukuro","袋子","餐廳・購物"],
+  ["おつり","おつり","otsuri","找零","餐廳・購物"],["割引","わりびき","waribiki","折扣","餐廳・購物"],
+  ["セール","セール","seeru","特賣","餐廳・購物"],["試着","しちゃく","shichaku","試穿","餐廳・購物"],
+  // 天氣・季節詳細
+  ["曇り","くもり","kumori","陰天","天氣詳細"],["晴れ","はれ","hare","晴天","天氣詳細"],
+  ["台風","たいふう","taifuu","颱風","天氣詳細"],["地震","じしん","jishin","地震","天氣詳細"],
+  ["気温","きおん","kion","氣溫","天氣詳細"],["湿度","しつど","shitsudo","濕度","天氣詳細"],
+  ["予報","よほう","yohou","預報","天氣詳細"],["季節","きせつ","kisetsu","季節","天氣詳細"],
+  // 交通・移動
+  ["信号","しんごう","shingou","紅綠燈","交通・移動"],["交差点","こうさてん","kousaten","十字路口","交通・移動"],
+  ["地下鉄","ちかてつ","chikatetsu","地鐵","交通・移動"],["新幹線","しんかんせん","shinkansen","新幹線","交通・移動"],
+  ["バス停","バスてい","basutei","公車站","交通・移動"],["乗り換え","のりかえ","norikae","換乘","交通・移動"],
+  ["改札","かいさつ","kaisatsu","剪票口","交通・移動"],["ホーム","ホーム","hoomu","月台","交通・移動"],
+  ["地図","ちず","chizu","地圖","交通・移動"],["出口","でぐち","deguchi","出口","交通・移動"],
+  ["入口","いりぐち","iriguchi","入口","交通・移動"],["料金","りょうきん","ryoukin","費用","交通・移動"],
+  // 職業・社會
+  ["警察","けいさつ","keisatsu","警察","職業・社會"],["消防士","しょうぼうし","shouboushi","消防員","職業・社會"],
+  ["看護師","かんごし","kangoshi","護士","職業・社會"],["運転手","うんてんしゅ","untenshu","司機","職業・社會"],
+  ["店員","てんいん","ten-in","店員","職業・社會"],["銀行員","ぎんこういん","ginkouin","銀行行員","職業・社會"],
+  ["主婦","しゅふ","shufu","家庭主婦","職業・社會"],["社長","しゃちょう","shachou","社長","職業・社會"],
+  ["部長","ぶちょう","buchou","部長","職業・社會"],["同僚","どうりょう","douryou","同事","職業・社會"],
+  // 建築・場所詳細
+  ["受付","うけつけ","uketsuke","接待處","建築・場所"],["廊下","ろうか","rouka","走廊","建築・場所"],
+  ["玄関","げんかん","genkan","玄關","建築・場所"],["屋根","やね","yane","屋頂","建築・場所"],
+  ["地下","ちか","chika","地下","建築・場所"],["一階","いっかい","ikkai","一樓","建築・場所"],
+  ["二階","にかい","nikai","二樓","建築・場所"],["エレベーター","エレベーター","erebeetaa","電梯","建築・場所"],
+  ["エスカレーター","エスカレーター","esukareetaa","電扶梯","建築・場所"],["非常口","ひじょうぐち","hijouguchi","緊急出口","建築・場所"],
+  // 日常動作・事物
+  ["約束","やくそく","yakusoku","約定","日常動作"],["予約","よやく","yoyaku","預約","日常動作"],
+  ["準備","じゅんび","junbi","準備","日常動作"],["練習","れんしゅう","renshuu","練習","日常動作"],
+  ["説明","せつめい","setsumei","說明","日常動作"],["相談","そうだん","soudan","商量","日常動作"],
+  ["連絡","れんらく","renraku","聯絡","日常動作"],["確認","かくにん","kakunin","確認","日常動作"],
+  ["報告","ほうこく","houkoku","報告","日常動作"],["質問","しつもん","shitsumon","提問","日常動作"],
+  ["返事","へんじ","henji","回覆","日常動作"],["挨拶","あいさつ","aisatsu","打招呼","日常動作"],
+  // 感情・性格
+  ["気持ち","きもち","kimochi","心情","感情・性格"],["笑顔","えがお","egao","笑臉","感情・性格"],
+  ["涙","なみだ","namida","眼淚","感情・性格"],["怒り","おこり","okori","憤怒","感情・性格"],
+  ["心配","しんぱい","shinpai","擔心","感情・性格"],["安心","あんしん","anshin","放心","感情・性格"],
+  ["驚き","おどろき","odoroki","驚訝","感情・性格"],["恥","はじ","haji","羞恥","感情・性格"],
+  ["愛","あい","ai","愛","感情・性格"],["友情","ゆうじょう","yuujou","友情","感情・性格"],
+  // 自然環境
+  ["草","くさ","kusa","草","自然環境"],["葉","は","ha","葉子","自然環境"],
+  ["根","ね","ne","根","自然環境"],["石","いし","ishi","石頭","自然環境"],
+  ["砂","すな","suna","沙子","自然環境"],["土","つち","tsuchi","土壤","自然環境"],
+  ["空気","くうき","kuuki","空氣","自然環境"],["火","ひ","hi","火","自然環境"],
+  ["光","ひかり","hikari","光","自然環境"],["影","かげ","kage","影子","自然環境"],
+  ["波","なみ","nami","波浪","自然環境"],["島","しま","shima","島嶼","自然環境"],
+  // 通訊・媒體
+  ["メール","メール","meeru","電子郵件","通訊・媒體"],["インターネット","インターネット","intaanetto","網路","通訊・媒體"],
+  ["ホームページ","ホームページ","hoomupeiji","網頁","通訊・媒體"],["スマホ","スマホ","sumaho","智慧型手機","通訊・媒體"],
+  ["パソコン","パソコン","pasokon","電腦","通訊・媒體"],["アプリ","アプリ","apuri","應用程式","通訊・媒體"],
+  ["ニュース","ニュース","nyuusu","新聞","通訊・媒體"],["広告","こうこく","koukoku","廣告","通訊・媒體"],
+  // 醫療・身體狀況
+  ["救急車","きゅうきゅうしゃ","kyuukyuusha","救護車","醫療・身體"],["手術","しゅじゅつ","shujutsu","手術","醫療・身體"],
+  ["注射","ちゅうしゃ","chuusha","注射","醫療・身體"],["血液","けつえき","ketsueki","血液","醫療・身體"],
+  ["骨","ほね","hone","骨頭","醫療・身體"],["筋肉","きんにく","kinniku","肌肉","醫療・身體"],
+  ["皮膚","ひふ","hifu","皮膚","醫療・身體"],["アレルギー","アレルギー","arerugii","過敏","醫療・身體"],
+];
+
+
+
+var N5_CATS=["全部","人・身體","食物・飲料","場所","交通・物品","自然・時間","動物・顏色","生活・學習","數量・方向","家具・家電","服裝・配件","文具・學習","運動・趣味","健康・身體","數字・計數","餐廳・購物","天氣詳細","交通・移動","職業・社會","建築・場所","日常動作","感情・性格","自然環境","通訊・媒體","醫療・身體"];
+var n5Mode="jp2zh",n5Cat="全部",n5Qs=[],n5Idx=0,n5C=0,n5W=0;
+var n5Stats=JSON.parse(localStorage.getItem("kd_n5")||'{"c":0,"t":0}');
+
+function n5Pool(){
+  if(n5Cat==="全部")return N5W;
+  return N5W.filter(function(w){return w[4]===n5Cat;});
+}
+
+function setN5Mode(m){
+  n5Mode=m;
+  var ms=["jp2zh","zh2jp","roma2jp"];
+  document.querySelectorAll("#n5ctrl .fcb").forEach(function(b,i){b.classList.toggle("active",ms[i]===m);});
+  startN5();
+}
+
+function setN5Cat(c){
+  n5Cat=c;
+  document.querySelectorAll("#n5catbtns .fcb").forEach(function(b){b.classList.toggle("active",b.textContent===c);});
+  startN5();
+}
+
+function renderN5CatBtns(){
+  var d=document.getElementById("n5catbtns");d.innerHTML="";
+  N5_CATS.forEach(function(c){
+    var b=document.createElement("button");b.className="fcb"+(c==="全部"?" active":"");
+    b.textContent=c;b.onclick=function(){setN5Cat(c);};
+    d.appendChild(b);
+  });
+}
+
+function startN5(){
+  document.getElementById("n5resbox").style.display="none";
+  document.getElementById("n5play").style.display="";
+  var pool=n5Pool();
+  document.getElementById("n5total").textContent=pool.length;
+  n5Qs=shuf(pool).slice(0,15);
+  n5Idx=0;n5C=0;n5W=0;renderN5();
+}
+
+function renderN5(){
+  var q=n5Qs[n5Idx];
+  document.getElementById("n5n").textContent=n5Idx+1;
+  document.getElementById("n5t").textContent=n5Qs.length;
+  document.getElementById("n5c").textContent=n5C;
+  document.getElementById("n5w").textContent=n5W;
+  document.getElementById("n5pf").style.width=(n5Idx/n5Qs.length*100)+"%";
+  document.getElementById("n5next").classList.remove("show");
+  var pool=n5Pool();
+  var wrongs=shuf(pool.filter(function(w){return w[0]!==q[0];})).slice(0,3);
+  var opts=shuf([q].concat(wrongs));
+  var card=document.getElementById("n5card");
+  var od=document.getElementById("n5opts");od.innerHTML="";
+
+  if(n5Mode==="jp2zh"){
+    // 顯示日文(平假名)，選中文
+    card.innerHTML='<div class="qlabel">這個單字的意思是？</div>'+
+      '<div style="font-size:42px;color:var(--hira);margin-bottom:4px">'+q[0]+'</div>'+
+      '<div style="font-size:16px;color:var(--muted);letter-spacing:2px">'+q[1]+'</div>';
+    opts.forEach(function(o){
+      var b=document.createElement("button");b.className="qopt";
+      b.style.fontSize="16px";b.style.letterSpacing="1px";
+      b.innerHTML='<span>'+o[3]+'</span>';
+      (function(oo){b.onclick=function(){ansN5(b,oo[0],q[0],q);};})(o);od.appendChild(b);
+    });
+  }else if(n5Mode==="zh2jp"){
+    // 顯示中文，選日文
+    card.innerHTML='<div class="qlabel">「'+q[3]+'」的日文是？</div>'+
+      '<div style="font-size:36px;color:var(--ink);font-weight:700">'+q[3]+'</div>';
+    opts.forEach(function(o){
+      var b=document.createElement("button");b.className="qopt";
+      b.style.flexDirection="column";b.style.gap="2px";
+      b.innerHTML='<span style="font-size:20px;color:var(--hira)">'+o[0]+'</span>'+
+        '<span style="font-size:10px;color:var(--muted)">'+o[1]+'</span>';
+      (function(oo){b.onclick=function(){ansN5(b,oo[0],q[0],q);};})(o);od.appendChild(b);
+    });
+  }else{
+    // 顯示羅馬拼音，選日文
+    card.innerHTML='<div class="qlabel">這個讀音的日文單字是？</div>'+
+      '<div style="font-size:28px;letter-spacing:4px;font-weight:700;color:var(--ink)">'+q[2]+'</div>'+
+      '<div style="font-size:12px;color:var(--muted);margin-top:4px">'+q[3]+'</div>';
+    opts.forEach(function(o){
+      var b=document.createElement("button");b.className="qopt";
+      b.innerHTML='<span style="font-size:20px;color:var(--hira)">'+o[0]+'</span>'+
+        '<span style="font-size:10px;color:var(--muted)">'+o[1]+'</span>';
+      (function(oo){b.onclick=function(){ansN5(b,oo[0],q[0],q);};})(o);od.appendChild(b);
+    });
+  }
+}
+
+function ansN5(btn,chosen,correct,q){
+  document.querySelectorAll("#n5opts .qopt").forEach(function(b){b.disabled=true;});
+  var right=chosen===correct;
+  btn.classList.add(right?"correct":"wrong");
+  if(!right){
+    document.querySelectorAll("#n5opts .qopt").forEach(function(b){
+      if(b.textContent.indexOf(correct)>=0||b.innerHTML.indexOf(">"+correct+"<")>=0)b.classList.add("correct");
+    });
+  }
+  if(right)n5C++;else n5W++;
+  n5Stats.c+=(right?1:0);n5Stats.t++;
+  localStorage.setItem("kd_n5",JSON.stringify(n5Stats));
+  var nb=document.getElementById("n5next");nb.classList.add("show");
+  nb.textContent=n5Idx+1>=n5Qs.length?"查看結果 →":"次の問題 →";
+  spk(q[1]); // 朗讀假名
+}
+
+function nextN5(){
+  n5Idx++;
+  if(n5Idx>=n5Qs.length){showN5Res();return;}
+  renderN5();
+}
+
+function showN5Res(){
+  document.getElementById("n5play").style.display="none";
+  document.getElementById("n5resbox").style.display="block";
+  document.getElementById("n5rs").textContent=n5C;
+  document.getElementById("n5ro").textContent="/ "+n5Qs.length+" 題";
+  var pct=Math.round(n5C/n5Qs.length*100);
+  document.getElementById("n5rm").textContent=
+    pct===100?"🌸 滿分！完美通過！":pct>=80?"🎌 非常好！再接再厲！":pct>=60?"📖 不錯！繼續練習！":"💪 熟能生巧，多練習！";
 }
 
 // ═══════════════ INIT ═══════════════
