@@ -198,8 +198,31 @@ body{
 .resmsg{font-size:14px;color:var(--ink);margin-bottom:20px;letter-spacing:1px;}
 .btn-restart{padding:11px 26px;background:var(--red);color:white;border:none;border-radius:7px;cursor:pointer;font-size:13px;letter-spacing:2px;font-family:inherit;}
 
-/* safe area bottom */
-#nav{padding-bottom:env(safe-area-inset-bottom,0);}
+/* ── CONVERSATION ── */
+.conv-section{margin-bottom:18px;}
+.conv-sec-title{
+  font-size:11px;font-weight:700;color:white;letter-spacing:2px;
+  background:var(--hira);padding:6px 12px;border-radius:6px;margin-bottom:8px;
+}
+.conv-card{
+  background:white;border:1px solid var(--border);border-radius:10px;
+  margin-bottom:8px;overflow:hidden;cursor:pointer;
+  transition:box-shadow .15s;
+}
+.conv-card:active{box-shadow:0 0 0 2px var(--hira);}
+.conv-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 12px 8px;
+}
+.conv-jp{font-size:17px;color:var(--hira);font-weight:600;line-height:1.3;}
+.conv-speak{background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;flex-shrink:0;}
+.conv-roma{font-size:11px;color:var(--muted);letter-spacing:1px;padding:0 12px 4px;}
+.conv-zh{font-size:13px;color:var(--ink);padding:4px 12px 10px;border-top:1px solid var(--border);background:#fafaf8;}
+.conv-note{font-size:10px;color:var(--gold);margin-top:2px;}
+
+/* safe area nav scroll */
+#nav{overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;flex-wrap:nowrap;}
+.nb{flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -224,6 +247,7 @@ body{
   <button class="nb" onclick="goTab('fc')">🃏 翻卡</button>
   <button class="nb" onclick="goTab('quiz')">✏️ 測驗</button>
   <button class="nb" onclick="goTab('n5')">📚 N5</button>
+  <button class="nb" onclick="goTab('conv')">💬 會話</button>
 </div>
 
 <div id="content">
@@ -330,6 +354,11 @@ body{
       </div>
     </div>
   </div>
+  <!-- CONV -->
+  <div class="tab" id="tab-conv">
+    <div class="fcc" id="conv-cat-btns"></div>
+    <div id="conv-list"></div>
+  </div>
 </div>
 
 <!-- MODAL -->
@@ -433,7 +462,7 @@ function updateS(){
 }
 
 // ═══════════════ TABS ═══════════════
-var TABS=["map","chart","fc","quiz","n5"];
+var TABS=["map","chart","fc","quiz","n5","conv"];
 function goTab(t){
   TABS.forEach(function(id,i){
     document.getElementById("tab-"+id).classList.toggle("show",id===t);
@@ -444,6 +473,7 @@ function goTab(t){
   if(t==="fc")initFC();
   if(t==="quiz")startQ();
   if(t==="n5"){renderN5CatBtns();startN5();}
+  if(t==="conv"){renderConvCatBtns();renderConvList();}
   updateS();
 }
 
@@ -1171,6 +1201,186 @@ function showN5Res(){
   var pct=Math.round(n5C/n5Qs.length*100);
   document.getElementById("n5rm").textContent=
     pct===100?"🌸 滿分！完美通過！":pct>=80?"🎌 非常好！再接再厲！":pct>=60?"📖 不錯！繼續練習！":"💪 熟能生巧，多練習！";
+}
+
+// ═══════════════ CONVERSATION DATA ═══════════════
+// [jp, romaji, zh, note?]
+var CONV_DATA={
+  "日常問候":[
+    ["おはようございます。","Ohayou gozaimasu.","早安。","正式，對長輩或初次見面使用"],
+    ["こんにちは。","Konnichiwa.","你好。（白天）",""],
+    ["こんばんは。","Konbanwa.","晚安。（問候）",""],
+    ["おやすみなさい。","Oyasuminasai.","晚安。（道別）",""],
+    ["はじめまして。","Hajimemashite.","初次見面。","第一次見面時說"],
+    ["よろしくお願いします。","Yoroshiku onegaishimasu.","請多多指教。",""],
+    ["お元気ですか？","Ogenki desu ka?","你還好嗎？",""],
+    ["元気です。ありがとう。","Genki desu. Arigatou.","我很好，謝謝。",""],
+    ["久しぶりですね。","Hisashiburi desu ne.","好久不見。",""],
+    ["ありがとうございます。","Arigatou gozaimasu.","謝謝你。","正式說法"],
+    ["どうもありがとう。","Doumo arigatou.","非常謝謝。","略為輕鬆"],
+    ["すみません。","Sumimasen.","不好意思／對不起。","萬用，可用於打招呼或道歉"],
+    ["ごめんなさい。","Gomennasai.","對不起。","誠心道歉"],
+    ["いいえ、大丈夫です。","Iie, daijoubu desu.","不，沒關係。",""],
+    ["では、また。","Dewa, mata.","那麼，再見。","輕鬆道別"],
+    ["気をつけてください。","Ki wo tsukete kudasai.","請保重。",""],
+  ],
+  "便利商店購物":[
+    ["これをください。","Kore wo kudasai.","請給我這個。","指著商品說"],
+    ["これはいくらですか？","Kore wa ikura desu ka?","這個多少錢？",""],
+    ["〜円です。","〜 en desu.","〜日圓。","店員報價"],
+    ["袋はいりますか？","Fukuro wa irimasu ka?","需要袋子嗎？","店員常問"],
+    ["袋はいりません。","Fukuro wa irimasen.","不需要袋子。",""],
+    ["一枚ください。","Ichi-mai kudasai.","請給我一個袋子。",""],
+    ["クレジットカードは使えますか？","Kurejitto kaado wa tsukaemasu ka?","可以刷卡嗎？",""],
+    ["PayPayは使えますか？","PayPay wa tsukaemasu ka?","可以用 PayPay 嗎？","日本最常用行動支付"],
+    ["現金で払います。","Genkin de haraimasu.","我要付現。",""],
+    ["温めてもらえますか？","Atatamete moraemasu ka?","可以幫我加熱嗎？","便當、包子等"],
+    ["お箸はありますか？","Ohashi wa arimasu ka?","有筷子嗎？",""],
+    ["スプーンをください。","Supuun wo kudasai.","請給我湯匙。",""],
+    ["レシートをください。","Reshiito wo kudasai.","請給我收據。",""],
+    ["ポイントカードはお持ちですか？","Pointo kaado wa omochi desu ka?","您有集點卡嗎？","店員常問"],
+    ["ありません。","Arimasen.","沒有。","回應集點卡問題"],
+    ["〜はどこですか？","〜 wa doko desu ka?","〜在哪裡？","找商品時"],
+    ["トイレはどこですか？","Toire wa doko desu ka?","廁所在哪裡？",""],
+  ],
+  "飯店入住":[
+    ["チェックインをお願いします。","Chekkuin wo onegaishimasu.","我要辦理入住。",""],
+    ["予約した〜です。","Yoyaku shita 〜 desu.","我是預約的〜。","報名字"],
+    ["予約番号は〜です。","Yoyaku bangou wa 〜 desu.","預約號碼是〜。",""],
+    ["パスポートを見せてください。","Pasupooto wo misete kudasai.","請出示護照。",""],
+    ["部屋は何階ですか？","Heya wa nankai desu ka?","房間在幾樓？",""],
+    ["荷物を預かってもらえますか？","Nimotsu wo azukatte moraemasu ka?","可以幫我保管行李嗎？",""],
+    ["もう一枚鍵をください。","Mou ichimai kagi wo kudasai.","請再給我一把鍵匙。",""],
+    ["朝食は何時からですか？","Choushoku wa nanji kara desu ka?","早餐從幾點開始？",""],
+    ["WiFiのパスワードを教えてください。","WiFi no pasuwado wo oshiete kudasai.","請告訴我WiFi密碼。",""],
+    ["部屋を掃除してください。","Heya wo souji shite kudasai.","請幫我打掃房間。",""],
+    ["タオルをもっとください。","Taoru wo motto kudasai.","請再給我更多毛巾。",""],
+    ["エアコンの使い方を教えてください。","Eakon no tsukaikata wo oshiete kudasai.","請教我冷氣怎麼用。",""],
+    ["チェックアウトは何時ですか？","Chekkuauto wa nanji desu ka?","退房時間是幾點？",""],
+    ["チェックアウトをお願いします。","Chekkuauto wo onegaishimasu.","我要退房。",""],
+    ["領収書をください。","Ryoushuusho wo kudasai.","請給我收據。",""],
+    ["近くにコンビニはありますか？","Chikaku ni konbini wa arimasu ka?","附近有便利商店嗎？",""],
+  ],
+  "地鐵・交通":[
+    ["〜駅はどこですか？","〜 eki wa doko desu ka?","〜站在哪裡？",""],
+    ["〜まで行きたいです。","〜 made ikitai desu.","我想去〜。",""],
+    ["〜まで、いくらですか？","〜 made, ikura desu ka?","到〜多少錢？",""],
+    ["〜枚ください。","〜 mai kudasai.","請給我〜張票。","買票"],
+    ["何番線ですか？","Nanban-sen desu ka?","幾號月台？",""],
+    ["次の電車は何時ですか？","Tsugi no densha wa nanji desu ka?","下一班電車幾點？",""],
+    ["この電車は〜に止まりますか？","Kono densha wa 〜 ni tomarimasu ka?","這班電車停〜嗎？",""],
+    ["乗り換えが必要ですか？","Norikae ga hitsuyou desu ka?","需要換乘嗎？",""],
+    ["〜で乗り換えてください。","〜 de norikae te kudasai.","請在〜換車。",""],
+    ["終電は何時ですか？","Shuden wa nanji desu ka?","末班車幾點？",""],
+    ["IC カードをチャージしたいです。","IC kaado wo chaaji shitai desu.","我想加值 IC 卡。","Suica/PASMO"],
+    ["タクシーを呼んでください。","Takushii wo yonde kudasai.","請幫我叫計程車。",""],
+    ["〜へ行ってください。","〜 e itte kudasai.","請開到〜。","搭計程車時"],
+    ["ここで止めてください。","Koko de tomete kudasai.","請在這裡停車。",""],
+    ["バス停はどこですか？","Basutei wa doko desu ka?","公車站在哪裡？",""],
+    ["〜番のバスはどこで乗りますか？","〜 ban no basu wa doko de norimasu ka?","〜號公車在哪裡搭？",""],
+  ],
+  "餐廳點餐":[
+    ["何名様ですか？","Nannmei-sama desu ka?","幾位？","店員問"],
+    ["二人です。","Futari desu.","兩位。",""],
+    ["禁煙席をお願いします。","Kin-en seki wo onegaishimasu.","請給我禁菸座位。",""],
+    ["メニューをください。","Menyuu wo kudasai.","請給我菜單。",""],
+    ["これは何ですか？","Kore wa nan desu ka?","這是什麼？",""],
+    ["おすすめは何ですか？","Osusume wa nan desu ka?","有什麼推薦的？",""],
+    ["〜をひとつください。","〜 wo hitotsu kudasai.","請給我一份〜。",""],
+    ["〜を〜つください。","〜 wo 〜 tsu kudasai.","請給我〜份〜。",""],
+    ["辛くしないでください。","Karakunai de kudasai.","請不要做辣。",""],
+    ["アレルギーがあります。","Arerugii ga arimasu.","我有過敏。",""],
+    ["〜は入っていますか？","〜 wa haitte imasu ka?","裡面有〜嗎？","確認食材"],
+    ["お水をください。","Omizu wo kudasai.","請給我水。",""],
+    ["お会計をお願いします。","Okaikei wo onegaishimasu.","請結帳。",""],
+    ["別々に払えますか？","Betsubetsu ni haraemasu ka?","可以分開付嗎？",""],
+    ["ごちそうさまでした。","Gochisousama deshita.","謝謝款待。","飯後說"],
+    ["とてもおいしかったです。","Totemo oishikatta desu.","非常好吃。",""],
+  ],
+  "問路・地點":[
+    ["〜はどこですか？","〜 wa doko desu ka?","〜在哪裡？",""],
+    ["ここはどこですか？","Koko wa doko desu ka?","這裡是哪裡？",""],
+    ["地図で教えてもらえますか？","Chizu de oshiete moraemasu ka?","可以在地圖上告訴我嗎？",""],
+    ["〜まで歩いて何分ですか？","〜 made aruite nanpun desu ka?","走路到〜幾分鐘？",""],
+    ["まっすぐ行ってください。","Massugu itte kudasai.","請直走。",""],
+    ["右に曲がってください。","Migi ni magatte kudasai.","請右轉。",""],
+    ["左に曲がってください。","Hidari ni magatte kudasai.","請左轉。",""],
+    ["〜の角を曲がってください。","〜 no kado wo magatte kudasai.","在〜的轉角轉彎。",""],
+    ["近いですか？","Chikai desu ka?","近嗎？",""],
+    ["遠いですか？","Tooi desu ka?","遠嗎？",""],
+    ["迷子になりました。","Maigo ni narimashita.","我迷路了。",""],
+    ["道に迷っています。","Michi ni mayotte imasu.","我在迷路中。",""],
+    ["Google マップで案内してもらえますか？","Google mappu de an-nai shite moraemasu ka?","可以用 Google 地圖帶我去嗎？",""],
+  ],
+  "醫療・緊急":[
+    ["助けてください！","Tasukete kudasai!","請救我！",""],
+    ["救急車を呼んでください！","Kyuukyuusha wo yonde kudasai!","請叫救護車！",""],
+    ["警察を呼んでください！","Keisatsu wo yonde kudasai!","請叫警察！",""],
+    ["病院はどこですか？","Byouin wa doko desu ka?","醫院在哪裡？",""],
+    ["具合が悪いです。","Guai ga warui desu.","我身體不舒服。",""],
+    ["〜が痛いです。","〜 ga itai desu.","〜很痛。","〜填身體部位"],
+    ["熱があります。","Netsu ga arimasu.","我發燒了。",""],
+    ["お腹が痛いです。","Onaka ga itai desu.","我肚子痛。",""],
+    ["頭が痛いです。","Atama ga itai desu.","我頭痛。",""],
+    ["薬はありますか？","Kusuri wa arimasu ka?","有藥嗎？",""],
+    ["日本語があまりわかりません。","Nihongo ga amari wakarimasen.","我不太懂日語。",""],
+    ["英語を話せる人はいますか？","Eigo wo hanaseru hito wa imasu ka?","有人會說英文嗎？",""],
+    ["財布をなくしました。","Saifu wo nakushimashita.","我的錢包丟了。",""],
+    ["パスポートをなくしました。","Pasupooto wo nakushimashita.","我的護照丟了。",""],
+    ["大使館に連絡したいです。","Taishikan ni renraku shitai desu.","我想聯絡大使館。",""],
+  ],
+  "購物・殺價":[
+    ["見てもいいですか？","Mite mo ii desu ka?","可以看看嗎？",""],
+    ["試着してもいいですか？","Shichaku shite mo ii desu ka?","可以試穿嗎？",""],
+    ["サイズはありますか？","Saizu wa arimasu ka?","有這個尺寸嗎？",""],
+    ["〜サイズはありますか？","〜 saizu wa arimasu ka?","有〜尺寸嗎？","S/M/L"],
+    ["ちょっと大きいです。","Chotto ookii desu.","有點太大了。",""],
+    ["ちょっと小さいです。","Chotto chiisai desu.","有點太小了。",""],
+    ["別の色はありますか？","Betsu no iro wa arimasu ka?","有其他顏色嗎？",""],
+    ["これを買います。","Kore wo kaimasu.","我要買這個。",""],
+    ["これにします。","Kore ni shimasu.","我決定要這個。",""],
+    ["免税できますか？","Menzei dekimasu ka?","可以退稅嗎？",""],
+    ["パスポートが必要ですか？","Pasupooto ga hitsuyou desu ka?","需要護照嗎？","免稅時"],
+    ["ギフト包装してもらえますか？","Gifuto housoushite moraemasu ka?","可以幫我做禮品包裝嗎？",""],
+    ["これを日本へ送れますか？","Kore wo Nihon e okure masu ka?","可以把這個寄到日本嗎？",""],
+    ["返品できますか？","Henpin dekimasu ka?","可以退貨嗎？",""],
+  ],
+};
+
+var CONV_CATS=Object.keys(CONV_DATA);
+var convCat=CONV_CATS[0];
+
+function renderConvCatBtns(){
+  var d=document.getElementById("conv-cat-btns");d.innerHTML="";
+  CONV_CATS.forEach(function(c){
+    var b=document.createElement("button");
+    b.className="fcb"+(c===convCat?" active":"");
+    b.textContent=c;
+    b.onclick=function(){convCat=c;renderConvCatBtns();renderConvList();};
+    d.appendChild(b);
+  });
+}
+
+function renderConvList(){
+  var d=document.getElementById("conv-list");d.innerHTML="";
+  var items=CONV_DATA[convCat]||[];
+  var sec=document.createElement("div");sec.className="conv-section";
+  var title=document.createElement("div");title.className="conv-sec-title";title.textContent="💬 "+convCat;
+  sec.appendChild(title);
+  items.forEach(function(item){
+    var jp=item[0],roma=item[1],zh=item[2],note=item[3]||"";
+    var card=document.createElement("div");card.className="conv-card";
+    card.innerHTML=
+      '<div class="conv-header">'+
+        '<div class="conv-jp">'+jp+'</div>'+
+        '<button class="conv-speak" onclick="event.stopPropagation();spk(\''+jp.replace(/'/g,"\\'")+'\')" aria-label="發音">🔊</button>'+
+      '</div>'+
+      '<div class="conv-roma">'+roma+'</div>'+
+      '<div class="conv-zh">'+zh+(note?'<div class="conv-note">💡 '+note+'</div>':'')+'</div>';
+    card.onclick=function(){spk(jp);};
+    sec.appendChild(card);
+  });
+  d.appendChild(sec);
 }
 
 // ═══════════════ INIT ═══════════════
