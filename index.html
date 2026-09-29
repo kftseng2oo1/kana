@@ -234,6 +234,16 @@ body{
   </div>
 </div>
 
+<div id="voice-alert" style="display:none;align-items:flex-start;gap:10px;background:#fff8e1;border-bottom:2px solid #f5d06a;padding:10px 14px;font-size:12px;color:#7a5800;line-height:1.5;">
+  <span style="font-size:20px;flex-shrink:0">🔕</span>
+  <div>
+    <strong>未偵測到日語語音包</strong><br>
+    發音功能需要系統安裝日語語音。<br>
+    <span style="color:#8b0000">設定 → 一般 → 語言與地區 → 新增語言「日本語」</span>，或前往<br>
+    <span style="color:#8b0000">設定 → 輔助使用 → 語音內容 → 聲音 → 日文</span> 下載語音包。
+    <br><button onclick="document.getElementById('voice-alert').style.display='none'" style="margin-top:6px;background:#f5d06a;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:700;">知道了</button>
+  </div>
+</div>
 <div id="stats">
   <div class="sc"><strong id="s-l">0</strong>已學</div>
   <div class="sc"><strong id="s-p">0%</strong>進度</div>
@@ -450,7 +460,59 @@ function dueP(){
   return allP(true).filter(function(p){var d=srs[p[2]];return !d||d.due<=now;});
 }
 function shuf(a){var b=a.slice();for(var i=b.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=b[i];b[i]=b[j];b[j]=t;}return b;}
-function spk(t){try{var u=new SpeechSynthesisUtterance(t);u.lang="ja-JP";u.rate=0.85;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){}}
+// ── 語音引擎 ──
+var jaVoice=null;   // 快取日語語音
+var voiceReady=false;
+var voiceChecked=false;
+
+function loadVoices(){
+  var voices=speechSynthesis.getVoices();
+  if(!voices.length) return;
+  // 優先找日語語音
+  jaVoice=voices.find(function(v){return v.lang==="ja-JP";})
+         ||voices.find(function(v){return v.lang.startsWith("ja");})
+         ||null;
+  voiceReady=true;
+  if(!voiceChecked){
+    voiceChecked=true;
+    if(!jaVoice) showVoiceAlert();
+  }
+}
+
+// 語音載入通常是非同步的
+if(window.speechSynthesis){
+  speechSynthesis.onvoiceschanged=loadVoices;
+  loadVoices(); // 部分瀏覽器同步即可
+}
+
+function showVoiceAlert(){
+  var el=document.getElementById("voice-alert");
+  if(el) el.style.display="flex";
+}
+
+function spk(t){
+  try{
+    if(!window.speechSynthesis) return;
+    // 若尚未檢查完，稍後重試
+    if(!voiceReady){
+      loadVoices();
+      setTimeout(function(){spk(t);},600);
+      return;
+    }
+    var u=new SpeechSynthesisUtterance(t);
+    if(jaVoice){
+      u.voice=jaVoice;
+      u.lang="ja-JP";
+      u.rate=0.85;
+    } else {
+      // 備用：羅馬音（英語語音念出來雖不準但有聲音）
+      u.lang="en-US";
+      u.rate=0.8;
+    }
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
 
 // ═══════════════ STATS ═══════════════
 function updateS(){
